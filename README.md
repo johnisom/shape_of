@@ -1,3 +1,8 @@
+<!--
+  Copyright 2021 John Isom.
+  Licensed under the MIT open source license.
+-->
+
 # ShapeOf
 
 A RubyGem that provides a way to verify "shapes" of objects.

@@ -1,3 +1,6 @@
+# Copyright 2021 John Isom.
+# Licensed under the MIT open source license.
+
 # The ShapeOf module can be used in testing JSON APIs to make sure that
 # the body of the result is of the correct format. It is similar to a type
 # checker, but a bit more generic.
