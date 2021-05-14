@@ -80,6 +80,18 @@ module ShapeOf
         raise TypeError, "Expected #{Shape.inspect}, an #{::Array.inspect}, or a #{::Hash.inspect} as the shape"
       end
     end
+
+    def refute_shape_of(object, shape)
+      if shape.respond_to? :shape_of?
+        refute shape.shape_of? object
+      elsif shape.instance_of? ::Array
+        refute Array[shape.first].shape_of? object
+      elsif shape.instance_of? ::Hash
+        refute Hash[shape].shape_of? object
+      else
+        raise TypeError, "Expected #{Shape.inspect}, an #{::Array.inspect}, or a #{::Hash.inspect} as the shape"
+      end
+    end
   end
 
   # Generic shape which all shapes subclass from
