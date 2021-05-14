@@ -5,8 +5,9 @@
 # the body of the result is of the correct format. It is similar to a type
 # checker, but a bit more generic.
 #
-# For example, given this hash, where friendly_name, external_id, external_avatar_url, and data are optional:
-# {
+# For example, given this hash, where `friendly_name`, `external_id`, `external_avatar_url`, and `data` are optional:
+# ```ruby
+# hash = {
 #   id: 123,
 #   name: "John Doe",
 #   friendly_name: "Johnny",
@@ -25,8 +26,11 @@
 #   created_at: "2020-12-28T15:55:35.121Z",
 #   updated_at: "2020-12-28T15:55:35.121Z"
 # }
-# the proper ShapeOf would be this:
-# ShapeOf::Hash[
+# ```
+
+# the proper shape would be this:
+# ```ruby
+# shape = ShapeOf::Hash[
 #   id: Integer,
 #   name: String,
 #   friendly_name: ShapeOf::Optional[String],
@@ -43,9 +47,13 @@
 #   created_at: String,
 #   updated_at: String
 # ]
-#
-# As another example, this shape:
-# ShapeOf::Hash[
+
+# shape.shape_of? hash # => true
+# ```
+
+# As another example, given this shape:
+# ```ruby
+# hash_shape = ShapeOf::Hash[
 #   value: ShapeOf::Optional[
 #     ShapeOf::Union[
 #       ShapeOf::Array[
@@ -59,15 +67,22 @@
 #     ]
 #   ]
 # ]
-# means that these shapes pass:
-# { value: { inner_value: 3 } }
-# { value: [{ inner_value: 3 }] }
-# { value: [{ inner_value: 3 }, { inner_value: "foo" }, { inner_value: [1, 2, 3] }] }
-# and these fail:
-# { foo: { inner_value: 'bar' } }
-# { value: 23 }
-# { value: [23] }
-# { value: [{}] }
+# ```
+
+# These shapes pass:
+# ```ruby
+# hash_shape.shape_of?({ value: { inner_value: 3 } }) # => true
+# hash_shape.shape_of?({ value: [{ inner_value: 3 }] }) # => true
+# hash_shape.shape_of?({ value: [{ inner_value: 3 }, { inner_value: "foo" }, { inner_value: [1, 2, 3] }] }) # => true
+# ```
+
+# And these fail:
+# ```ruby
+# hash_shape.shape_of?({ foo: { inner_value: 'bar' } }) # => false
+# hash_shape.shape_of?({ value: 23 }) # => false
+# hash_shape.shape_of?({ value: [23] }) # => false
+# hash_shape.shape_of?({ value: [{}] }) # => false
+# ```
 #
 module ShapeOf
   # To be included in a MiniTest test class
