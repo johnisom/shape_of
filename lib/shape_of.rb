@@ -70,7 +70,15 @@ module ShapeOf
   # To be included in a MiniTest test class
   module Assertions
     def assert_shape_of(object, shape)
-      assert Hash[shape].shape_of? object
+      if shape.respond_to? :shape_of?
+        assert shape.shape_of? object
+      elsif shape.instance_of? ::Array
+        assert Array[shape.first].shape_of? object
+      elsif shape.instance_of? ::Hash
+        assert Hash[shape].shape_of? object
+      else
+        raise TypeError, "Expected #{Shape.inspect}, an #{::Array.inspect}, or a #{::Hash.inspect} as the shape"
+      end
     end
   end
 
