@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.authors = ["John Isom"]
   s.email = "john@johnisom.dev"
   s.files = ["lib/shape_of.rb"]
-  # s.homepage = ""
+  # s.homepage = "https://github.com/johnisom/shape_of"
   # s.metadata = {}
   # s.add_development_dependency
   # s.add_runtime_dependency
