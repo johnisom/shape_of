@@ -299,14 +299,16 @@ module ShapeOf
   end
 end
 
+# Monkey patch
 class Hash
-  def to_shape
+  def to_shape_of
     ShapeOf::Hash[self]
   end
 end
 
+# Monkey patch
 class Array
-  def to_shape
-    ShapeOf::Array[self]
+  def to_shape_of
+    ShapeOf::Array[self.first]
   end
 end
