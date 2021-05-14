@@ -2,6 +2,8 @@
 # Licensed under the open source MIT license.
 
 require 'minitest/autorun'
+require 'minitest/reporters'
+MiniTest::Reporters.use!
 require 'shape_of'
 
 class ShapeOfTest < Minitest::Test
