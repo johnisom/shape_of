@@ -244,10 +244,6 @@ module ShapeOf
 
   # Union[Shape1, Shape2, ...] denotes that it can be of one the provided shapes
   class Union < Shape
-    def self.shape_of?(object)
-      false
-    end
-
     def self.[](*shapes)
       Class.new(self) do
         @class_name = "#{superclass.name}[#{shapes.map(&:inspect).join(", ")}]"

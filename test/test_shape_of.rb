@@ -109,6 +109,7 @@ class ShapeOfTest < Minitest::Test
   def test_union
     assert_operator ShapeOf::Union, :respond_to?, :required?
     assert_predicate ShapeOf::Union, :required?
+    assert_raises(NotImplementedError) { ShapeOf::Union.shape_of?(nil) }
 
     assert_shape_of_many ShapeOf::Union[Integer, String], [1, 4, 21, 65, "hello", "world", '', 'bar'.freeze, -345, 0, +"d"]
     refute_shape_of_many ShapeOf::Union[Integer, String], [nil, true, false, { foo: 2 }, [], /regex/, Set.new, 1.upto(10)]
