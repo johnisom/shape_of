@@ -185,6 +185,23 @@ TODO: fill out this section.
 
 TODO: fill out this section.
 
+### `ShapeOf::Regexp`
+
+The `ShapeOf::Regexp[/regexp pattern/]` is used to match either `Regexp`s as equal or to match a `Regexp` against a `String` using `Regexp#match?`.
+```ruby
+shape = ShapeOf::Regexp[/foobar$/i]
+
+shape.shape_of?("foobar") # => true
+shape.shape_of?(/foobar$/i) # => true
+shape.shape_of?("fOobAr\n") # => true
+shape.shape_of?("\n\nfoobar\n") # => true
+shape.shape_of?("foo\nbarfoo\nfoobar\nfo\nobar\n") # => true
+shape.shape_of?("There once was a barfoo who foobared. Foobar") # => true
+shape.shape_of?(/foobar$/) # => false
+shape.shape_of?(/foobar/i) # => false
+shape.shape_of?("foo\nbar\n") # => false
+```
+
 ### `ShapeOf::Boolean`
 
 TODO: fill out this section.

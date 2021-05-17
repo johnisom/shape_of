@@ -244,10 +244,6 @@ module ShapeOf
 
   # Union[Shape1, Shape2, ...] denotes that it can be of one the provided shapes
   class Union < Shape
-    def self.shape_of?(object)
-      false
-    end
-
     def self.[](*shapes)
       Class.new(self) do
         @class_name = "#{superclass.name}[#{shapes.map(&:inspect).join(", ")}]"
@@ -317,6 +313,47 @@ module ShapeOf
 
     def self.required?
       false
+    end
+  end
+
+  class Regexp < Shape
+    @internal_class = ::Regexp 
+
+    def self.shape_of?(object)
+      object.instance_of? @internal_class
+    end
+
+    def self.[](shape)
+      raise TypeError, "Shape must be #{::Regexp.inspect}, was #{shape.inspect}" unless shape.instance_of? ::Regexp
+
+      Class.new(self) do
+        @class_name = "#{superclass.name}[#{shape.inspect}]"
+        @shape = shape
+
+        def self.name
+          @class_name
+        end
+
+        def self.to_s
+          @class_name
+        end
+
+        def self.inspect
+          @class_name
+        end
+
+        def self.shape_of?(object)
+          unless object.instance_of?(::Regexp) || object.instance_of?(String)
+            raise TypeError, "expected #{::Regexp.inspect} or #{String.inspect}, was instead #{object.inspect}"
+          end
+
+          if object.instance_of?(::Regexp)
+            @shape == object
+          else # string
+            @shape.match?(object)
+          end
+        end
+      end
     end
   end
 

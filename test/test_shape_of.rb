@@ -66,6 +66,11 @@ class ShapeOfTest < Minitest::Test
     assert_equal Class, ShapeOf::Nothing.class
   end
 
+  def test_regexp_is_defined
+    assert_equal "constant", defined? ShapeOf::Regexp
+    assert_equal Class, ShapeOf::Regexp.class
+  end
+
   def test_numeric_is_defined
     assert_equal "constant", defined? ShapeOf::Numeric
     assert_equal Class, ShapeOf::Numeric.class
@@ -276,6 +281,22 @@ class ShapeOfTest < Minitest::Test
 
     assert_operator shape, :shape_of?, {}
     refute_shape_of_many shape, [{ foo: nil }, { foo: :bar }, { hello: "world" }, [{}]]
+  end
+
+  # Regexp
+
+  def test_regexp
+    assert_operator ShapeOf::Regexp, :respond_to?, :required?
+    assert_predicate ShapeOf::Regexp, :required?
+    assert_raises(TypeError) { ShapeOf::Regexp['foobar'] }
+    assert_raises(TypeError) { ShapeOf::Regexp[/foobar/].shape_of?(['hello']) }
+
+    assert_shape_of_many ShapeOf::Regexp, [/foo/, //, /bar/, /bz/imx, Regexp.new('foobadfaejralj')]
+    refute_shape_of_many ShapeOf::Regexp, [nil, true, false, '', '/foobar/']
+    assert_shape_of_many ShapeOf::Regexp[/foobar/], [/foobar/, 'foobar', "\n\nfoobar\n\n", /foobar/.to_s, "qwertyuiopasdfghjklzxcvbnmfoobarqwertyuioopasdfghjklzxcvbnm"]
+    refute_shape_of_many ShapeOf::Regexp[/foobar/], [/fobar/, 'fobar', '']
+    assert_shape_of_many ShapeOf::Regexp[/^whoa/i], [/^whoa/i, 'whoa there', 'WHOA there!', "whoa hello\nwhoa there\nwhoa whoa!"]
+    refute_shape_of_many ShapeOf::Regexp[/^whoa/i], [/whoa/, 'hey, whoa there', " WHOA there!"]
   end
 
   # Numeric
