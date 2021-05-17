@@ -3,7 +3,7 @@
 
 Gem::Specification.new do |s|
   s.name = "shape_of"
-  s.version = "1.0.0"
+  s.version = "1.1.0"
   s.licenses = ["MIT"]
   s.summary = "A shape/type checker for Ruby objects."
   # s.description = ""
