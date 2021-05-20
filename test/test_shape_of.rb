@@ -66,9 +66,9 @@ class ShapeOfTest < Minitest::Test
     assert_equal Class, ShapeOf::Nothing.class
   end
 
-  def test_regexp_is_defined
-    assert_equal "constant", defined? ShapeOf::Regexp
-    assert_equal Class, ShapeOf::Regexp.class
+  def test_pattern_is_defined
+    assert_equal "constant", defined? ShapeOf::Pattern
+    assert_equal Class, ShapeOf::Pattern.class
   end
 
   def test_numeric_is_defined
@@ -154,6 +154,15 @@ class ShapeOfTest < Minitest::Test
 
     assert_shape_of_many shape, [[], [{ foo: [] }], [{ foo: [{ bar: [{ foo: [{ bar: [] }] }] }] }]]
     refute_shape_of_many shape, [{}, [[]], [{}], [{ foo: [12233] }]]
+  end
+
+  def test_array_literal_syntax_with_hash
+    shape = ShapeOf::Hash[
+      arr: [String]
+    ]
+
+    assert_shape_of_many shape, [{ arr: [] }, { arr: [""] }, { arr: ["foo", "bar"] }]
+    refute_shape_of_many shape, [nil, {}, { arr: nil }, { arr: [2] }]
   end
 
   # Hash
@@ -283,20 +292,20 @@ class ShapeOfTest < Minitest::Test
     refute_shape_of_many shape, [{ foo: nil }, { foo: :bar }, { hello: "world" }, [{}]]
   end
 
-  # Regexp
+  # Pattern
 
-  def test_regexp
-    assert_operator ShapeOf::Regexp, :respond_to?, :required?
-    assert_predicate ShapeOf::Regexp, :required?
-    assert_raises(TypeError) { ShapeOf::Regexp['foobar'] }
-    assert_raises(TypeError) { ShapeOf::Regexp[/foobar/].shape_of?(['hello']) }
+  def test_pattern
+    assert_operator ShapeOf::Pattern, :respond_to?, :required?
+    assert_predicate ShapeOf::Pattern, :required?
+    assert_raises(NotImplementedError) { ShapeOf::Pattern.shape_of?('foo') }
+    assert_raises(TypeError) { ShapeOf::Pattern['foobar'] }
+    assert_raises(TypeError) { ShapeOf::Pattern[/foobar/].shape_of?(/foobar/) }
+    assert_raises(TypeError) { ShapeOf::Pattern[/foobar/].shape_of?(['hello']) }
 
-    assert_shape_of_many ShapeOf::Regexp, [/foo/, //, /bar/, /bz/imx, Regexp.new('foobadfaejralj')]
-    refute_shape_of_many ShapeOf::Regexp, [nil, true, false, '', '/foobar/']
-    assert_shape_of_many ShapeOf::Regexp[/foobar/], [/foobar/, 'foobar', "\n\nfoobar\n\n", /foobar/.to_s, "qwertyuiopasdfghjklzxcvbnmfoobarqwertyuioopasdfghjklzxcvbnm"]
-    refute_shape_of_many ShapeOf::Regexp[/foobar/], [/fobar/, 'fobar', '']
-    assert_shape_of_many ShapeOf::Regexp[/^whoa/i], [/^whoa/i, 'whoa there', 'WHOA there!', "whoa hello\nwhoa there\nwhoa whoa!"]
-    refute_shape_of_many ShapeOf::Regexp[/^whoa/i], [/whoa/, 'hey, whoa there', " WHOA there!"]
+    assert_shape_of_many ShapeOf::Pattern[/foobar/], ['foobar', "\n\nfoobar\n\n", /^foobar$/imx.to_s, "qwertyuiopasdfghjklzxcvbnmfoobarqwertyuioopasdfghjklzxcvbnm"]
+    refute_shape_of_many ShapeOf::Pattern[/foobar/], ['fobar', '']
+    assert_shape_of_many ShapeOf::Pattern[/^whoa/i], ['whoa there', 'WHOA there!', "whoa hello\nwhoa there\nwhoa whoa!"]
+    refute_shape_of_many ShapeOf::Pattern[/^whoa/i], ['hey, whoa there', " WHOA there!"]
   end
 
   # Numeric
