@@ -161,7 +161,7 @@ module ShapeOf
             if @shape.respond_to? :shape_of?
               @shape.shape_of? elem
             elsif @shape.is_a? ::Array
-              Array[@shape].shape_of? elem
+              Array[@shape.first].shape_of? elem
             elsif @shape.is_a? ::Hash
               Hash[@shape].shape_of? elem
             elsif @shape.is_a? Class
@@ -222,7 +222,7 @@ module ShapeOf
             if @shape[key].respond_to? :shape_of?
               @shape[key].shape_of? elem
             elsif @shape[key].is_a? ::Array
-              Array[@shape[key]].shape_of? elem
+              Array[@shape[key].first].shape_of? elem
             elsif @shape[key].is_a? ::Hash
               Hash[@shape[key]].shape_of? elem
             elsif @shape[key].is_a? Class
@@ -316,15 +316,9 @@ module ShapeOf
     end
   end
 
-  class Regexp < Shape
-    @internal_class = ::Regexp 
-
-    def self.shape_of?(object)
-      object.instance_of? @internal_class
-    end
-
+  class Pattern < Shape
     def self.[](shape)
-      raise TypeError, "Shape must be #{::Regexp.inspect}, was #{shape.inspect}" unless shape.instance_of? ::Regexp
+      raise TypeError, "Shape must be #{Regexp.inspect}, was #{shape.inspect}" unless shape.instance_of? Regexp
 
       Class.new(self) do
         @class_name = "#{superclass.name}[#{shape.inspect}]"
@@ -343,15 +337,9 @@ module ShapeOf
         end
 
         def self.shape_of?(object)
-          unless object.instance_of?(::Regexp) || object.instance_of?(String)
-            raise TypeError, "expected #{::Regexp.inspect} or #{String.inspect}, was instead #{object.inspect}"
-          end
+          raise TypeError, "expected #{String.inspect}, was instead #{object.inspect}" unless object.instance_of?(String)
 
-          if object.instance_of?(::Regexp)
-            @shape == object
-          else # string
-            @shape.match?(object)
-          end
+          @shape.match?(object)
         end
       end
     end
