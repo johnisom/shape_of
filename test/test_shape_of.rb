@@ -151,6 +151,15 @@ class ShapeOfTest < Minitest::Test
     refute_shape_of_many shape, [{}, [[]], [{}], [{ foo: [12233] }]]
   end
 
+  def test_array_literal_syntax_with_hash
+    shape = ShapeOf::Hash[
+      arr: [String]
+    ]
+
+    assert_shape_of_many shape, [{ arr: [] }, { arr: [""] }, { arr: ["foo", "bar"] }]
+    refute_shape_of_many shape, [nil, {}, { arr: nil }, { arr: [2] }]
+  end
+
   # Hash
 
   def test_hash
