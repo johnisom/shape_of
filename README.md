@@ -171,37 +171,120 @@ shape.shape_of?({ bar: '', foo: nil }) # => true
 
 ### `ShapeOf::Hash`
 
-TODO: fill out this section.
+Pulled from comments from the source code:
+
+> `Hash[key: shape, ...]` denotes it is a hash of shapes with a very specific structure.
+> `Hash` (without square brackets) is just a hash with any shape.
+> This, along with `Array`, are the core components of this module.
+> Note that the keys are converted to strings for comparison for both the shape and object provided.
+
+Example:
+```ruby
+# note that keyword args can be provided directly or wrapped in curly braces
+shape = ShapeOf::Hash[foo: String, bar: ShapeOf::Hash[{ baz: Integer }]]
+
+shape.shape_of?({ foo: "", bar: { baz: 1 } }) # => true
+shape.shape_of?({ foo: "foo", bar: { baz: -2 } }) # => true
+shape.shape_of?({}) # => false
+shape.shape_of?({ bar: { baz: 2 } }) # => false
+shape.shape_of?({ foo: "foo", bar: {} }) # => false
+shape.shape_of?({ foo: "foo", bar: { baz: -2, blamo: nil } }) # => false
+shape.shape_of?({ foo: "foo", bar: { baz: -2 }, blamo: nil }) # => false
+```
 
 ### `ShapeOf::Array`
 
-TODO: fill out this section.
+Pulled from comments from the source code:
+
+> `Array[shape]` denotes that it is an array of shapes.
+> It checks every element in the array and verifies that the element is in the correct shape.
+> This, along with `Hash`, are the core components of this module.
+> Note that a `ShapeOf::Array[Integer].shape_of?([])` will pass because it is vacuously true for an empty array.
+
+Example:
+```ruby
+shape = ShapeOf::Array[String]
+
+shape.shape_of?([]) # => true
+shape.shape_of?(["foobar"]) # => true
+shape.shape_of?(["a", "b", "c", "d"]) # => true
+shape.shape_of?(["a", "b", 1, "d"]) # => false
+shape.shape_of?(["a", "b", nil, "d"]) # => false
+```
 
 ### `ShapeOf::Union`
 
-TODO: fill out this section.
+Pulled from comments from the source code:
+
+> `Union[shape1, shape2, ...]` denotes that it can be of one the provided shapes.
+
+Example:
+```ruby
+shape = ShapeOf::Union[String, ShapeOf::Array[String]]
+
+shape.shape_of?("") # => true
+shape.shape_of?("foo") # => true
+shape.shape_of?([]) # => true
+shape.shape_of?(["foo", "bar", "baz"]) # => true
+shape.shape_of?(["foo", 1]) # => false
+shape.shape_of?(nil) # => false
+```
 
 ### `ShapeOf::Optional`
 
-TODO: fill out this section.
+Pulled from comments from the source code:
+
+> `Optional[shape]` denotes that the usual type is a `shape`, but is optional.
+> (meaning if it is `nil` or the key is not present in the `Hash`, it's still true).
+
+Example:
+```ruby
+shape = ShapeOf::Optional[ShapeOf::Boolean]
+
+shape.shape_of?(nil) # => true
+shape.shape_of?(true) # => true
+shape.shape_of?(false) # => true
+shape.shape_of?(1) # => false
+shape.shape_of?("") # => false
+```
+
+Example with `ShapeOf::Hash`:
+```ruby
+shape = ShapeOf::Hash[foo: String, bar: ShapeOf::Optional[ShapeOf::Boolean]]
+
+shape.shape_of?({ foo: "", bar: nil }) # => true
+shape.shape_of?({ foo: "", bar: true }) # => true
+shape.shape_of?({ foo: "", bar: false }) # => true
+shape.shape_of?({ foo: "" }) # => true
+shape.shape_of?({ foo: "", bar: 1 }) # => false
+shape.shape_of?({ foo: "", bar: "" }) # => false
+```
 
 ### `ShapeOf::Boolean`
 
-TODO: fill out this section.
+```ruby
+ShapeOf::Union[TrueClass, FalseClass]
+```
 
 ### `ShapeOf::Numeric`
 
-TODO: fill out this section.
+```ruby
+ShapeOf::Union[Integer, Float, Rational, Complex]
+```
 
 ### `ShapeOf::Any`
 
-TODO: fill out this section.
+Anything matches unless key does not exist in the `ShapeOf::Hash`.
 
 ### `ShapeOf::Nothing`
 
-TODO: fill out this section.
+Only passes when the key does not exist in the `ShapeOf::Hash`.
 
 ## With MiniTest
+
+Included is a `ShapeOf::Assertions` module which includes 2 methods: `assert_shape_of`, and `refute_shape_of`.
+Keep in mind that the order of the "expected" and "actual" value for these assertions are backwards of
+what Minitest assertions are. In ShapeOf, the actual comes first, then the expected shape comes after.
 
 ```Ruby
 require 'shape_of'
@@ -214,7 +297,8 @@ class MyTestClass < MiniTest::Test
     to_test = [{ foo: 1, bar: nil }]
     assert_shape_of(to_test, ShapeOf::Array[
       ShapeOf::Hash[
-        foo: Integer, bar: ShapeOf::Optional[Integer]
+        foo: Integer,
+        bar: ShapeOf::Optional[Integer],
       ]
     ]) # assertion passes
   end
