@@ -127,9 +127,9 @@ module ShapeOf
     end
   end
 
-  # Array[Shape] denotes that it is an array of shapes.
+  # Array[shape] denotes that it is an array of shapes.
   # It checks every element in the array and verifies that the element is in the correct shape.
-  # This, along with Array, are the core components of this module.
+  # This, along with Hash, are the core components of this module.
   # Note that a ShapeOf::Array[Integer].shape_of?([]) will pass because it is vacuously true for an empty array.
   class Array < Shape
     @internal_class = ::Array
@@ -175,7 +175,8 @@ module ShapeOf
     end
   end
 
-  # Hash[key: Shape, ...] denotes it is a hash of shapes with a very specific structure. Hash (without square brackets) is just a hash with any shape.
+  # Hash[key: shape, ...] denotes it is a hash of shapes with a very specific structure.
+  # Hash (without square brackets) is just a hash with any shape.
   # This, along with Array, are the core components of this module.
   # Note that the keys are converted to strings for comparison for both the shape and object provided.
   class Hash < Shape
@@ -242,7 +243,7 @@ module ShapeOf
     end
   end
 
-  # Union[Shape1, Shape2, ...] denotes that it can be of one the provided shapes
+  # Union[shape1, shape2, ...] denotes that it can be of one the provided shapes.
   class Union < Shape
     def self.[](*shapes)
       Class.new(self) do
@@ -280,7 +281,8 @@ module ShapeOf
     end
   end
 
-  # Optional[Shape] denotes that the usual type is a Shape, but is optional (meaning if it is nil or the key is not present in the Hash, it's still true)
+  # Optional[shape] denotes that the usual type is a shape, but is optional
+  # (meaning if it is nil or the key is not present in the Hash, it's still true)
   class Optional < Shape
     def self.[](shape)
       raise TypeError, "Shape cannot be nil" if shape.nil? || shape == NilClass
@@ -299,13 +301,14 @@ module ShapeOf
     end
   end
 
+  # Anything matches unless key does not exist in the Hash.
   class Any < Shape
     def self.shape_of?(object)
       true
     end
   end
 
-  # Nothing only passes when the key does not exist in the Hash.
+  # Only passes when the key does not exist in the Hash.
   class Nothing < Shape
     def self.shape_of?(object)
       false
@@ -316,10 +319,12 @@ module ShapeOf
     end
   end
 
+  # Union[Integer, Float, Rational, Complex]
   Numeric = Union[Integer, Float, Rational, Complex].tap do |this|
     this.instance_variable_set(:@class_name, this.name.sub(/Union.*/, 'Numeric'))
   end
 
+  # Union[TrueClass, FalseClass]
   Boolean = Union[TrueClass, FalseClass].tap do |this|
     this.instance_variable_set(:@class_name, this.name.sub(/Union.*/, 'Boolean'))
   end
