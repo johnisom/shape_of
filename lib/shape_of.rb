@@ -219,8 +219,9 @@ module ShapeOf
 
         def self.shape_of?(array, validator: Validator.new(shape: self, object: array))
           idx = 0
-          super && array.all? do |elem|
-            validator.push_key(idx)
+          each_is_shape_of = true
+          super && array.each do |elem|
+            validator.push_key("idx_" + idx.to_s)
 
             is_shape_of = if @shape.respond_to? :shape_of?
               @shape.shape_of?(elem, validator: validator)
@@ -242,8 +243,9 @@ module ShapeOf
 
             validator.pop_key
             idx += 1
-            is_shape_of
+            each_is_shape_of &&= is_shape_of
           end
+          each_is_shape_of
         end
       end
     end
@@ -291,7 +293,7 @@ module ShapeOf
           rb_hash.keys.each do |key|
             has_key = @shape.key?(key)
             unless has_key
-              validator.push_key(key.to_sym)
+              validator.push_key(key)
               validator.add_error("unexpected key")
               validator.pop_key
               return false
@@ -300,16 +302,17 @@ module ShapeOf
 
           @shape.each do |key, shape|
             unless rb_hash.key?(key) || shape.respond_to?(:required?) && !shape.required?
-              validator.push_key(key.to_sym)
+              validator.push_key(key)
               validator.add_error("required key not present")
               validator.pop_key
               return false
             end
           end
 
-          rb_hash.all? do |key, elem|
+          each_is_shape_of = true
+          rb_hash.each do |key, elem|
             shape_elem = @shape[key]
-            validator.push_key(key.to_sym)
+            validator.push_key(key)
 
             is_shape_of = if shape_elem.respond_to? :shape_of?
               shape_elem.shape_of?(elem, validator: validator)
@@ -330,8 +333,9 @@ module ShapeOf
             end
 
             validator.pop_key
-            is_shape_of
+            each_is_shape_of &&= is_shape_of
           end
+          each_is_shape_of
         end
       end
     end
@@ -388,8 +392,8 @@ module ShapeOf
             object_shapes = @shapes.select do |shape|
               !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && !shape.is_a?(Class)
             end
-            validator.add_error(object.inspect + " not instance of any of (" + object_shapes.map(&:inspect).join(", ") +
-                                ") or is not equal to (==) any of (" + class_shapes.map(&:inspect).join(", ") + ")")
+            validator.add_error(object.inspect + " not instance of any of (" + class_shapes.map(&:inspect).join(", ") +
+                                ") or is not equal to (==) any of (" + object_shapes.map(&:inspect).join(", ") + ")")
           end
 
           is_any_shape_of
