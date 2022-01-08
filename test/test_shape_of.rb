@@ -301,9 +301,8 @@ class ShapeOfTest < Minitest::Test
     assert_predicate ShapeOf::Pattern, :required?
     assert_raises(NotImplementedError) { ShapeOf::Pattern.shape_of?('foo') }
     assert_raises(TypeError) { ShapeOf::Pattern['foobar'] }
-    assert_raises(TypeError) { ShapeOf::Pattern[/foobar/].shape_of?(/foobar/) }
-    assert_raises(TypeError) { ShapeOf::Pattern[/foobar/].shape_of?(['hello']) }
 
+    refute_shape_of_many ShapeOf::Pattern[/foobar/], [/foobar/, ['hello']]
     assert_shape_of_many ShapeOf::Pattern[/foobar/], ['foobar', "\n\nfoobar\n\n", /^foobar$/imx.to_s, "qwertyuiopasdfghjklzxcvbnmfoobarqwertyuioopasdfghjklzxcvbnm"]
     refute_shape_of_many ShapeOf::Pattern[/foobar/], ['fobar', '']
     assert_shape_of_many ShapeOf::Pattern[/^whoa/i], ['whoa there', 'WHOA there!', "whoa hello\nwhoa there\nwhoa whoa!"]

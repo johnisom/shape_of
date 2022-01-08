@@ -497,7 +497,10 @@ module ShapeOf
         end
 
         def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
-          raise TypeError, "expected #{String.inspect}, was instead #{object.inspect}" unless object.instance_of?(String)
+          unless object.instance_of?(String)
+            validator.add_error(object.inspect + " is not instance of " + String.inspect)
+            return false
+          end
 
           does_regexp_match = @shape.match?(object)
           validator.add_error(object.inspect + " does not match " + @shape.inspect) unless does_regexp_match
