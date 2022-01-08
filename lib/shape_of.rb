@@ -145,7 +145,22 @@ module ShapeOf
 
   # To be included in a MiniTest test class
   module Assertions
-    def assert_shape_of(object, shape)
+    # For backward compatibility, this is "off" by default, and the order in the assertions are reverse.
+    @proper_expected_actual_order = false
+    def self.use_proper_expected_actual_order!
+      @proper_expected_actual_order = true
+    end
+
+    def assert_shape_of(arg1, arg2)
+      shape = object = nil
+      if @proper_expected_actual_order
+        shape = arg1
+        object = arg2
+      else
+        shape = arg2
+        object = arg1
+      end
+
       validator = nil
       if shape.respond_to? :shape_of?
         validator = Validator.new(shape: shape, object: object)
@@ -160,7 +175,16 @@ module ShapeOf
       assert validator.valid?, validator.error_message
     end
 
-    def refute_shape_of(object, shape)
+    def refute_shape_of(arg1, arg2)
+      shape = object = nil
+      if @proper_expected_actual_order
+        shape = arg1
+        object = arg2
+      else
+        shape = arg2
+        object = arg1
+      end
+
       validator = nil
       if shape.respond_to? :shape_of?
         validator = Validator.new(shape: shape, object: object)
