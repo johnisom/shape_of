@@ -84,37 +84,95 @@
 # hash_shape.shape_of?({ value: [{}] }) # => false
 # ```
 #
+require 'pp'
+
 module ShapeOf
+  class Validator
+    attr_reader :shape, :object
+
+    def initialize(shape:, object:)
+      @current_error_key_nesting = [:base] # stack of the current error key
+      @errors = {}
+      @object = object
+      @shape = shape
+
+      validate
+    end
+
+    def valid?
+      @errors.empty?
+    end
+
+    def error_message
+      @errors.pretty_inspect
+    end
+
+    def add_error(message)
+      create_nested_error_structure
+
+      @errors.dig(*@current_error_key_nesting)[:errors] << message.dup
+    end
+
+    def push_key(key)
+      @current_error_key_nesting.push(key)
+    end
+
+    def pop_key
+      @current_error_key_nesting.pop
+    end
+
+    private
+
+    def create_nested_error_structure
+      errors = @errors
+      @current_error_key_nesting.each do |key|
+        errors[key] ||= {}
+        errors = errors[key]
+      end
+      @errors.dig(*@current_error_key_nesting)[:errors] ||= []
+    end
+
+    def validate
+      shape.shape_of?(object, validator: self)
+    end
+  end
+
   # To be included in a MiniTest test class
   module Assertions
     def assert_shape_of(object, shape)
+      validator = nil
       if shape.respond_to? :shape_of?
-        assert_operator shape, :shape_of?, object
+        validator = Validator.new(shape: shape, object: object)
       elsif shape.instance_of? ::Array
-        assert_operator Array[shape.first], :shape_of?, object
+        validator = Validator.new(shape: Array[shape.first], object: object)
       elsif shape.instance_of? ::Hash
-        assert_operator Hash[shape], :shape_of?, object
+        validator = Validator.new(shape: Hash[shape], object: object)
       else
         raise TypeError, "Expected #{Shape.inspect}, an #{::Array.inspect}, or a #{::Hash.inspect} as the shape"
       end
+
+      assert validator.valid?, validator.error_message
     end
 
     def refute_shape_of(object, shape)
+      validator = nil
       if shape.respond_to? :shape_of?
-        refute_operator shape, :shape_of?, object
+        validator = Validator.new(shape: shape, object: object)
       elsif shape.instance_of? ::Array
-        refute_operator Array[shape.first], :shape_of?, object
+        validator = Validator.new(shape: Array[shape.first], object: object)
       elsif shape.instance_of? ::Hash
-        refute_operator Hash[shape], :shape_of?, object
+        validator = Validator.new(shape: Hash[shape], object: object)
       else
         raise TypeError, "Expected #{Shape.inspect}, an #{::Array.inspect}, or a #{::Hash.inspect} as the shape"
       end
+
+      refute validator.valid?, "#{shape} is shape_of? #{object}"
     end
   end
 
   # Generic shape which all shapes subclass from
   class Shape
-    def self.shape_of?(*)
+    def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
       raise NotImplementedError
     end
 
@@ -134,8 +192,11 @@ module ShapeOf
   class Array < Shape
     @internal_class = ::Array
 
-    def self.shape_of?(object)
-      object.instance_of? @internal_class
+    def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
+      is_instance_of = object.instance_of?(@internal_class)
+      validator.add_error(object.inspect + " is not instance of " + @internal_class.inspect) unless is_instance_of
+
+      is_instance_of
     end
 
     def self.[](shape)
@@ -156,19 +217,32 @@ module ShapeOf
           @class_name
         end
 
-        def self.shape_of?(array)
+        def self.shape_of?(array, validator: Validator.new(shape: self, object: array))
+          idx = 0
           super && array.all? do |elem|
-            if @shape.respond_to? :shape_of?
-              @shape.shape_of? elem
+            validator.push_key(idx)
+
+            is_shape_of = if @shape.respond_to? :shape_of?
+              @shape.shape_of?(elem, validator: validator)
             elsif @shape.is_a? ::Array
-              Array[@shape.first].shape_of? elem
+              Array[@shape.first].shape_of?(elem, validator: validator)
             elsif @shape.is_a? ::Hash
-              Hash[@shape].shape_of? elem
+              Hash[@shape].shape_of?(elem, validator: validator)
             elsif @shape.is_a? Class
-              elem.instance_of? @shape
+              is_instance_of = elem.instance_of?(@shape)
+              validator.add_error(elem.inspect + " is not instance of " + @shape.inspect) unless is_instance_of
+
+              is_instance_of
             else
-              elem == @shape
+              is_equal_to = elem == @shape
+              validator.add_error(elem.inspect " is not equal to (==) " + @shape.inspect) unless is_equal_to
+
+              is_equal_to
             end
+
+            validator.pop_key
+            idx += 1
+            is_shape_of
           end
         end
       end
@@ -182,8 +256,11 @@ module ShapeOf
   class Hash < Shape
     @internal_class = ::Hash
 
-    def self.shape_of?(object)
-      object.instance_of? @internal_class
+    def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
+      is_instance_of = object.instance_of?(@internal_class)
+      validator.add_error(object.inspect + " is not instance of " + @internal_class.inspect) unless is_instance_of
+
+      is_instance_of
     end
 
     def self.[](shape = {})
@@ -206,31 +283,54 @@ module ShapeOf
           @class_name
         end
 
-        def self.shape_of?(hash)
+        def self.shape_of?(hash, validator: Validator.new(shape: self, object: hash))
           return false unless super
 
           rb_hash = stringify_rb_hash_keys(hash)
 
           rb_hash.keys.each do |key|
-            return false unless @shape.key?(key)
+            has_key = @shape.key?(key)
+            unless has_key
+              validator.push_key(key.to_sym)
+              validator.add_error("unexpected key")
+              validator.pop_key
+              return false
+            end
           end
 
           @shape.each do |key, shape|
-            return false unless rb_hash.key?(key) || shape.respond_to?(:required?) && !shape.required?
+            unless rb_hash.key?(key) || shape.respond_to?(:required?) && !shape.required?
+              validator.push_key(key.to_sym)
+              validator.add_error("required key not present")
+              validator.pop_key
+              return false
+            end
           end
 
           rb_hash.all? do |key, elem|
-            if @shape[key].respond_to? :shape_of?
-              @shape[key].shape_of? elem
-            elsif @shape[key].is_a? ::Array
-              Array[@shape[key].first].shape_of? elem
-            elsif @shape[key].is_a? ::Hash
-              Hash[@shape[key]].shape_of? elem
-            elsif @shape[key].is_a? Class
-              elem.instance_of? @shape[key]
+            shape_elem = @shape[key]
+            validator.push_key(key.to_sym)
+
+            is_shape_of = if shape_elem.respond_to? :shape_of?
+              shape_elem.shape_of?(elem, validator: validator)
+            elsif shape_elem.is_a? ::Array
+              Array[shape_elem.first].shape_of?(elem, validator: validator)
+            elsif shape_elem.is_a? ::Hash
+              Hash[shape_elem].shape_of?(elem, validator: validator)
+            elsif shape_elem.is_a? Class
+              is_instance_of = elem.instance_of?(shape_elem)
+              validator.add_error(elem.inspect + " is not instance of " + shape_elem.inspect) unless is_instance_of
+
+              is_instance_of
             else
-              elem == @shape[key]
+              is_equal_to = elem == shape_elem
+              validator.add_error(elem.inspect " is not equal to (==) " + shape_elem.inspect) unless is_equal_to
+
+              is_equal_to
             end
+
+            validator.pop_key
+            is_shape_of
           end
         end
       end
@@ -239,7 +339,7 @@ module ShapeOf
     private
 
     def self.stringify_rb_hash_keys(rb_hash)
-      rb_hash.to_a.map { |k, v| [k.to_s, v] }.to_h
+      rb_hash.transform_keys(&:to_s)
     end
   end
 
@@ -262,20 +362,37 @@ module ShapeOf
           @class_name
         end
 
-        def self.shape_of?(object)
-          @shapes.any? do |shape|
+        def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
+          is_any_shape_of_shape_or_hash_or_array = false
+          is_any_shape_of = @shapes.any? do |shape|
             if shape.respond_to? :shape_of?
-              shape.shape_of? object
+              is_shape_of = shape.shape_of?(object, validator: validator)
+              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
             elsif shape.is_a? ::Hash
-              Hash[shape].shape_of? object
+              is_shape_of = Hash[shape].shape_of?(object, validator: validator)
+              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
             elsif shape.is_a? ::Array
-              Array[shape].shape_of? object
+              is_shape_of = Array[shape].shape_of?(object, validator: validator)
+              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
             elsif shape.is_a? Class
-              object.instance_of? shape
+              object.instance_of?(shape)
             else
               object == shape
             end
           end
+
+          if !is_any_shape_of && !is_any_shape_of_shape_or_hash_or_array
+            class_shapes = @shapes.select do |shape|
+              !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && shape.is_a?(Class)
+            end
+            object_shapes = @shapes.select do |shape|
+              !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && !shape.is_a?(Class)
+            end
+            validator.add_error(object.inspect + " not instance of any of (" + object_shapes.map(&:inspect).join(", ") +
+                                ") or is not equal to (==) any of (" + class_shapes.map(&:inspect).join(", ") + ")")
+          end
+
+          is_any_shape_of
         end
       end
     end
@@ -303,14 +420,15 @@ module ShapeOf
 
   # Anything matches unless key does not exist in the Hash.
   class Any < Shape
-    def self.shape_of?(object)
+    def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
       true
     end
   end
 
   # Only passes when the key does not exist in the Hash.
   class Nothing < Shape
-    def self.shape_of?(object)
+    def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
+      validator.add_error("key present when not allowed")
       false
     end
 
@@ -342,10 +460,12 @@ module ShapeOf
           @class_name
         end
 
-        def self.shape_of?(object)
+        def self.shape_of?(object, validator: Validator.new(shape: self, object: object))
           raise TypeError, "expected #{String.inspect}, was instead #{object.inspect}" unless object.instance_of?(String)
 
-          @shape.match?(object)
+          does_regexp_match = @shape.match?(object)
+          validator.add_error(object.inspect + " does not match " + @shape.inspect) unless does_regexp_match
+          does_regexp_match
         end
       end
     end

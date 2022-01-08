@@ -5,6 +5,7 @@ require 'minitest/autorun'
 require 'minitest/reporters'
 MiniTest::Reporters.use!
 require 'shape_of'
+require 'set'
 
 class ShapeOfTest < Minitest::Test
   def assert_shape_of_many shape, objs
