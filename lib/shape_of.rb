@@ -87,11 +87,13 @@
 require 'pp'
 
 module ShapeOf
+  # Used in Assertions, and can also be used separately. It is used to keep track of places where the shape of
+  # data does not match, so that you can have greater insight than just a simple true/false.
   class Validator
     attr_reader :shape, :object
 
     def initialize(shape:, object:)
-      @current_error_key_nesting = [:base] # stack of the current error key
+      @current_error_key_nesting = [:base] # stack of the current error key.
       @errors = {}
       @object = object
       @shape = shape
@@ -103,8 +105,12 @@ module ShapeOf
       @errors.empty?
     end
 
+    def errors
+      @errors[:base]
+    end
+
     def error_message
-      @errors.pretty_inspect
+      errors.pretty_inspect
     end
 
     def add_error(message)
@@ -114,7 +120,7 @@ module ShapeOf
     end
 
     def push_key(key)
-      @current_error_key_nesting.push(key)
+      @current_error_key_nesting.push(key.dup)
     end
 
     def pop_key
@@ -218,9 +224,11 @@ module ShapeOf
         end
 
         def self.shape_of?(array, validator: Validator.new(shape: self, object: array))
+          return false unless super
+
           idx = 0
           each_is_shape_of = true
-          super && array.each do |elem|
+          array.each do |elem|
             validator.push_key("idx_" + idx.to_s)
 
             is_shape_of = if @shape.respond_to? :shape_of?
@@ -288,6 +296,7 @@ module ShapeOf
         def self.shape_of?(hash, validator: Validator.new(shape: self, object: hash))
           return false unless super
 
+          each_is_shape_of = true
           rb_hash = stringify_rb_hash_keys(hash)
 
           rb_hash.keys.each do |key|
@@ -296,7 +305,7 @@ module ShapeOf
               validator.push_key(key)
               validator.add_error("unexpected key")
               validator.pop_key
-              return false
+              each_is_shape_of = false
             end
           end
 
@@ -305,11 +314,10 @@ module ShapeOf
               validator.push_key(key)
               validator.add_error("required key not present")
               validator.pop_key
-              return false
+              each_is_shape_of = false
             end
           end
 
-          each_is_shape_of = true
           rb_hash.each do |key, elem|
             shape_elem = @shape[key]
             validator.push_key(key)
@@ -327,7 +335,7 @@ module ShapeOf
               is_instance_of
             else
               is_equal_to = elem == shape_elem
-              validator.add_error(elem.inspect " is not equal to (==) " + shape_elem.inspect) unless is_equal_to
+              validator.add_error(elem.inspect + " is not equal to (==) " + shape_elem.inspect) unless is_equal_to
 
               is_equal_to
             end
