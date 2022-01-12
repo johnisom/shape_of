@@ -268,7 +268,7 @@ module ShapeOf
               is_instance_of
             else
               is_equal_to = elem == @shape
-              validator.add_error(elem.inspect " is not equal to (==) " + @shape.inspect) unless is_equal_to
+              validator.add_error(elem.inspect + " is not equal to (==) " + @shape.inspect) unless is_equal_to
 
               is_equal_to
             end
