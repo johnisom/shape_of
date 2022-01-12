@@ -415,7 +415,9 @@ module ShapeOf
           end
 
           if !is_any_shape_of && !is_any_shape_of_shape_or_hash_or_array
-            shape_shapes = @shapes.select { |shape| shape.respond_to?(:shape_of?) }
+            shape_shapes = @shapes.select do |shape|
+              shape.respond_to?(:shape_of?) || shape.is_a?(::Hash) || shape.is_a?(::Array)
+            end
             class_shapes = @shapes.select do |shape|
               !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && shape.is_a?(Class)
             end
