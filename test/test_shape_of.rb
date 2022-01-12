@@ -347,6 +347,191 @@ class ShapeOfTest < Minitest::Test
     refute_operator shape, :shape_of?, [1, 'foo', nil]
   end
 
+  # Validator
+
+  def test_validator_valid_case
+    shape = ShapeOf::Hash[
+      buildings: ShapeOf::Array[ShapeOf::Hash[
+        name: String,
+        city: String,
+        province: ShapeOf::Optional[String],
+        state: ShapeOf::Optional[String],
+        zip: ShapeOf::Union[12345, 54321, 84102],
+        spaces: ShapeOf::Array[ShapeOf::Hash[
+          zip: ShapeOf::Nothing,
+          name: ShapeOf::Optional[ShapeOf::Union[
+            ShapeOf::Hash[
+              full_name: String,
+              short_name: String
+            ],
+            String
+          ]]
+        ]],
+        date_time_erected: ShapeOf::Pattern[/\A\d{4}-[01]\d-[0-3]\dT[0-5]\d:[0-5]\d:[0-5]\d.\d{3}Z\z/],
+        square_footage: ShapeOf::Numeric,
+        is_condemned: ShapeOf::Boolean
+      ]]
+    ]
+    object = {
+      buildings: [
+        {
+          name: "Gallivan Center",
+          city: "Salt Lake City",
+          state: "Utah",
+          zip: 84102,
+          date_time_erected: "2022-01-11T16:54:34.372Z",
+          square_footage: 100000/3r,
+          is_condemned: false,
+          spaces: [
+            {
+              name: "Ice Rink"
+            },
+            {
+              name: "Performance Stage"
+            },
+          ]
+        },
+        {
+          name: "",
+          city: "asdf",
+          zip: 12345,
+          date_time_erected: "9022-01-11T16:54:34.372Z",
+          square_footage: 12+23i,
+          is_condemned: true,
+          spaces: [
+            {
+              name: "dk"
+            },
+            {
+              name: {
+                full_name: "as;dlfj",
+                short_name: "as;ldkfj"
+              }
+            },
+          ]
+        },
+      ]
+    }
+    validator = ShapeOf::Validator.new(shape: shape, object: object)
+    assert_predicate validator, :valid?
+    assert_nil validator.errors
+    assert_equal "nil\n", validator.error_message
+    validator.push_key("foo")
+    validator.add_error("nothing")
+    validator.pop_key
+    assert_equal %({"foo"=>{:errors=>["nothing"]}}\n), validator.error_message
+  end
+
+  def test_validator_invalid_case
+    shape = ShapeOf::Hash[
+      buildings: ShapeOf::Array[ShapeOf::Hash[
+        name: String,
+        city: String,
+        province: ShapeOf::Optional[String],
+        state: ShapeOf::Optional[String],
+        zip: ShapeOf::Union[12345, 54321, 84102],
+        spaces: ShapeOf::Array[ShapeOf::Hash[
+          zip: ShapeOf::Nothing,
+          name: ShapeOf::Optional[ShapeOf::Union[
+            ShapeOf::Hash[
+              full_name: String,
+              short_name: String
+            ],
+            String
+          ]]
+        ]],
+        date_time_erected: ShapeOf::Pattern[/\A\d{4}-[01]\d-[0-3]\dT[0-5]\d:[0-5]\d:[0-5]\d.\d{3}Z\z/],
+        square_footage: ShapeOf::Numeric,
+        is_condemned: ShapeOf::Boolean
+      ]]
+    ]
+    object = {
+      buildings: [
+        {
+          name: 2,
+          state: false,
+          zip: 0,
+          date_time_erected: "2022-01-11 16:54:34.372",
+          square_footage: "12.3ft²",
+          is_condemned: nil,
+          spaces: [
+            {
+              name: {
+                full_namer: "foo",
+                short_name: "bar"
+              }
+            },
+          ]
+        },
+        {
+          name: "",
+          city: "N Y \nC",
+          province: "crazy",
+          state: "whoa",
+          zip: 12345,
+          date_tdme_erected: "9022-01-11T16:54:34.372Z",
+          square_footage: nil,
+          is_condemned: true,
+          spaces: [
+            {
+              name: "dk"
+            },
+            {
+              named: {
+                full_name: "as;dlfj",
+                short_name: "as;ldkfj"
+              }
+            },
+          ]
+        },
+      ]
+    }
+    validator = ShapeOf::Validator.new(shape: shape, object: object)
+    refute_predicate validator, :valid?
+    refute_nil validator.errors
+    assert_equal <<~MSG, validator.error_message
+      {"buildings"=>
+        {:idx_0=>
+          {"city"=>{:errors=>["required key not present"]},
+           "name"=>{:errors=>["2 is not instance of String"]},
+           "state"=>
+            {:errors=>
+              ["false is not shape of any of () or is not instance of any of (String, NilClass) or is not equal to (==) any of ()"]},
+           "zip"=>
+            {:errors=>
+              ["0 is not shape of any of () or is not instance of any of () or is not equal to (==) any of (12345, 54321, 84102)"]},
+           "date_time_erected"=>
+            {:errors=>
+              ["\\"2022-01-11 16:54:34.372\\" does not match /\\\\A\\\\d{4}-[01]\\\\d-[0-3]\\\\dT[0-5]\\\\d:[0-5]\\\\d:[0-5]\\\\d.\\\\d{3}Z\\\\z/"]},
+           "square_footage"=>
+            {:errors=>
+              ["\\"12.3ft²\\" is not shape of any of () or is not instance of any of (Integer, Float, Rational, Complex) or is not equal to (==) any of ()"]},
+           "is_condemned"=>
+            {:errors=>
+              ["nil is not shape of any of () or is not instance of any of (TrueClass, FalseClass) or is not equal to (==) any of ()"]},
+           "spaces"=>
+            {:idx_0=>
+              {"name"=>
+                {:errors=>
+                  ["{:full_namer=>\\"foo\\", :short_name=>\\"bar\\"} is not shape of any of (ShapeOf::Union[ShapeOf::Hash[full_name: String, short_name: String], String]) or is not instance of any of (NilClass) or is not equal to (==) any of ()"]}}}},
+         :idx_1=>
+          {"date_tdme_erected"=>
+            {:errors=>
+              ["unexpected key",
+               "\\"9022-01-11T16:54:34.372Z\\" is not equal to (==) nil"]},
+           "date_time_erected"=>{:errors=>["required key not present"]},
+           "square_footage"=>
+            {:errors=>
+              ["nil is not shape of any of () or is not instance of any of (Integer, Float, Rational, Complex) or is not equal to (==) any of ()"]},
+           "spaces"=>
+            {:idx_1=>
+              {"named"=>
+                {:errors=>
+                  ["unexpected key",
+                   "{:full_name=>\\"as;dlfj\\", :short_name=>\\"as;ldkfj\\"} is not equal to (==) nil"]}}}}}}
+    MSG
+  end
+
   # All together now
 
   def test_everything

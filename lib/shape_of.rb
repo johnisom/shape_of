@@ -253,7 +253,7 @@ module ShapeOf
           idx = 0
           each_is_shape_of = true
           array.each do |elem|
-            validator.push_key("idx_" + idx.to_s)
+            validator.push_key("idx_#{idx}".to_sym)
 
             is_shape_of = if @shape.respond_to? :shape_of?
               @shape.shape_of?(elem, validator: validator)
@@ -402,14 +402,11 @@ module ShapeOf
           is_any_shape_of_shape_or_hash_or_array = false
           is_any_shape_of = @shapes.any? do |shape|
             if shape.respond_to? :shape_of?
-              is_shape_of = shape.shape_of?(object, validator: validator)
-              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
+              is_any_shape_of_shape_or_hash_or_array ||= shape.shape_of?(object)
             elsif shape.is_a? ::Hash
-              is_shape_of = Hash[shape].shape_of?(object, validator: validator)
-              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
+              is_any_shape_of_shape_or_hash_or_array ||= Hash[shape].shape_of?(object)
             elsif shape.is_a? ::Array
-              is_shape_of = Array[shape].shape_of?(object, validator: validator)
-              is_any_shape_of_shape_or_hash_or_array ||= is_shape_of
+              is_any_shape_of_shape_or_hash_or_array ||= Array[shape].shape_of?(object)
             elsif shape.is_a? Class
               object.instance_of?(shape)
             else
@@ -418,13 +415,15 @@ module ShapeOf
           end
 
           if !is_any_shape_of && !is_any_shape_of_shape_or_hash_or_array
+            shape_shapes = @shapes.select { |shape| shape.respond_to?(:shape_of?) }
             class_shapes = @shapes.select do |shape|
               !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && shape.is_a?(Class)
             end
             object_shapes = @shapes.select do |shape|
               !shape.respond_to?(:shape_of?) && !shape.is_a?(::Hash) && !shape.is_a?(::Array) && !shape.is_a?(Class)
             end
-            validator.add_error(object.inspect + " not instance of any of (" + class_shapes.map(&:inspect).join(", ") +
+            validator.add_error(object.inspect + " is not shape of any of (" + shape_shapes.map(&:inspect).join(", ") +
+                                ") or is not instance of any of (" + class_shapes.map(&:inspect).join(", ") +
                                 ") or is not equal to (==) any of (" + object_shapes.map(&:inspect).join(", ") + ")")
           end
 
