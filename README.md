@@ -292,29 +292,91 @@ Anything matches unless key does not exist in the `ShapeOf::Hash`.
 
 ### `ShapeOf::Nothing`
 
-Only passes when the key does not exist in the `ShapeOf::Hash`.
+Only passes when the key does not exist in the `ShapeOf::Hash`. 
+
+## The Validator
+
+New in v3.0.0, ShapeOf comes with a validator to make testing the shape of objects even easier.
+See this example usage:
+
+```ruby
+a_shape = ShapeOf::Hash[foo: "bar", baz: Integer]
+an_object = { foo: "bar", baz: 525 }
+
+validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
+
+validator.valid? # => true
+validator.errors # => nil
+```
+
+And for a shape that doesn't match up:
+
+```ruby
+a_shape = ShapeOf::Hash[
+  non_existent: ShapeOf::Nothing,
+  is_existent: String,
+  list: ShapeOf::Array[Integer],
+  union: ShapeOf::Union[0, 1, ShapeOf::Boolean, "true", "false", Class]
+]
+an_object = {
+  non_existent: "should have error here",
+  list: [1, "12", "234", 2, 5, nil],
+  union: "yes" 
+}
+
+validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
+
+validator.valid? # => false
+validator.errors # => {"is_existent"=>{:errors=>["required key not present"]}, "non_existent"=>{:errors=>["key present when not allowed"]}, "list"=>{"idx_1"=>{:errors=>["\"12\" is not instance of Integer"]}, "idx_2"=>{:errors=>["\"234\" is not instance of Integer"]}, "idx_5"=>{:errors=>["nil is not instance of Integer"]}}, "union"=>{:errors=>["\"yes\" is not shape of any of (ShapeOf::Boolean) or is not instance of any of (Class) or is not equal to (==) any of (0, 1, \"true\", \"false\")"]}}
+```
 
 ## With MiniTest
 
 Included is a `ShapeOf::Assertions` module which includes 2 methods: `assert_shape_of`, and `refute_shape_of`.
 Keep in mind that the order of the "expected" and "actual" value for these assertions are backwards of
-what Minitest assertions are. In ShapeOf, the actual comes first, then the expected shape comes after.
+what Minitest assertions are.
+
+In ShapeOf, by default, the actual comes first, then the expected shape comes after. However, with the
+release of v3.0.0, the correct order can be used, by calling `ShapeOf::Assertions.use_proper_expected_actual_order!`
+before using any of the assertions in your tests.
 
 ```Ruby
+# test.rb
 require 'shape_of'
+ShapeOf::Assertions.use_proper_expected_actual_order!
+
 require 'minitest/autorun'
 
 class MyTestClass < MiniTest::Test
   include ShapeOf::Assertions
 
   def test_a_shape
-    to_test = [{ foo: 1, bar: nil }]
-    assert_shape_of(to_test, ShapeOf::Array[
+    to_test = [{ foo: 1, bar: nil }, { foo: 34 }]
+    assert_shape_of(ShapeOf::Array[
       ShapeOf::Hash[
         foo: Integer,
         bar: ShapeOf::Optional[Integer],
       ]
-    ]) # assertion passes
+    ], to_test) # assertion passes
+
+    assert_shape_of(ShapeOf::Array[
+      ShapeOf::Hash[
+        foo: "whoa",
+        bar: "nil",
+        baz: nil
+      ]
+    ], to_test) # assertion fails with this message:
+=begin
+ FAIL MyTestClass#test_a_shape (0.15s)
+        {:idx_0=>
+          {"baz"=>{:errors=>["required key not present"]},
+           "foo"=>{:errors=>["1 is not equal to (==) \"whoa\""]},
+           "bar"=>{:errors=>["nil is not equal to (==) \"nil\""]}},
+         :idx_1=>
+          {"bar"=>{:errors=>["required key not present"]},
+           "baz"=>{:errors=>["required key not present"]},
+           "foo"=>{:errors=>["34 is not equal to (==) \"whoa\""]}}}
+=end
   end
 end
 ```
