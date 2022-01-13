@@ -1,4 +1,4 @@
-# Copyright 2021 John Isom.
+# Copyright 2022 John Isom.
 # Licensed under the open source MIT license.
 
 # The ShapeOf module can be used in testing JSON APIs to make sure that
