@@ -1,5 +1,5 @@
 <!--
-  Copyright 2021 John Isom.
+  Copyright 2022 John Isom.
   Licensed under the MIT open source license.
 -->
 
@@ -7,7 +7,7 @@
 
 A RubyGem that provides a way to verify "shapes" of objects.
 
-This is licenced under the MIT license, Copyright 2021 John Isom.
+This is licenced under the MIT license, Copyright 2022 John Isom.
 
 ## Example Usage
 
@@ -167,6 +167,42 @@ shape.shape_of?({ bar: '', foo: "6" }) # => true
 shape.shape_of?({ bar: '', foo: nil }) # => true
  ```
 
+## The Validator
+
+New in v3.0.0, ShapeOf comes with a validator to make testing the shape of objects even easier.
+See this example usage:
+
+```ruby
+a_shape = ShapeOf::Hash[foo: "bar", baz: Integer]
+an_object = { foo: "bar", baz: 525 }
+
+validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
+
+validator.valid? # => true
+validator.errors # => nil
+```
+
+And for a shape that doesn't match up:
+
+```ruby
+a_shape = ShapeOf::Hash[
+  non_existent: ShapeOf::Nothing,
+  is_existent: String,
+  list: ShapeOf::Array[Integer],
+  union: ShapeOf::Union[0, 1, ShapeOf::Boolean, "true", "false", Class]
+]
+an_object = {
+  non_existent: "should have error here",
+  list: [1, "12", "234", 2, 5, nil],
+  union: "yes" 
+}
+
+validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
+
+validator.valid? # => false
+validator.errors # => {"is_existent"=>{:errors=>["required key not present"]}, "non_existent"=>{:errors=>["key present when not allowed"]}, "list"=>{:idx_1=>{:errors=>["\"12\" is not instance of Integer"]}, :idx_2=>{:errors=>["\"234\" is not instance of Integer"]}, :idx_5=>{:errors=>["nil is not instance of Integer"]}}, "union"=>{:errors=>["\"yes\" is not shape of any of (ShapeOf::Boolean) or is not instance of any of (Class) or is not equal to (==) any of (0, 1, \"true\", \"false\")"]}}
+```
+
 ## Provided Shapes
 
 ### `ShapeOf::Hash`
@@ -293,42 +329,6 @@ Anything matches unless key does not exist in the `ShapeOf::Hash`.
 ### `ShapeOf::Nothing`
 
 Only passes when the key does not exist in the `ShapeOf::Hash`. 
-
-## The Validator
-
-New in v3.0.0, ShapeOf comes with a validator to make testing the shape of objects even easier.
-See this example usage:
-
-```ruby
-a_shape = ShapeOf::Hash[foo: "bar", baz: Integer]
-an_object = { foo: "bar", baz: 525 }
-
-validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
-
-validator.valid? # => true
-validator.errors # => nil
-```
-
-And for a shape that doesn't match up:
-
-```ruby
-a_shape = ShapeOf::Hash[
-  non_existent: ShapeOf::Nothing,
-  is_existent: String,
-  list: ShapeOf::Array[Integer],
-  union: ShapeOf::Union[0, 1, ShapeOf::Boolean, "true", "false", Class]
-]
-an_object = {
-  non_existent: "should have error here",
-  list: [1, "12", "234", 2, 5, nil],
-  union: "yes" 
-}
-
-validator = ShapeOf::Validator.new(shape: a_shape, object: an_object)
-
-validator.valid? # => false
-validator.errors # => {"is_existent"=>{:errors=>["required key not present"]}, "non_existent"=>{:errors=>["key present when not allowed"]}, "list"=>{"idx_1"=>{:errors=>["\"12\" is not instance of Integer"]}, "idx_2"=>{:errors=>["\"234\" is not instance of Integer"]}, "idx_5"=>{:errors=>["nil is not instance of Integer"]}}, "union"=>{:errors=>["\"yes\" is not shape of any of (ShapeOf::Boolean) or is not instance of any of (Class) or is not equal to (==) any of (0, 1, \"true\", \"false\")"]}}
-```
 
 ## With MiniTest
 
